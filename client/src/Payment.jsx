@@ -25,21 +25,21 @@ const handleOrder = async () => {
     };
 
     try {
+      // Use your RENDER URL here
       const response = await axios.post('https://abreham-fast-food.onrender.com/api/order', orderData);
       
-      // --- NEW: CHECK FOR PAYMENT LINK ---
+      // === IF SERVER SENDS A PAYMENT LINK ===
       if (response.data.paymentUrl) {
-        // Open Chapa in Telegram's external browser
+        // Open Chapa Page
         if (window.Telegram.WebApp) {
             window.Telegram.WebApp.openLink(response.data.paymentUrl);
         } else {
-            // For testing on computer
             window.location.href = response.data.paymentUrl;
         }
-        return; // Stop here, don't clear cart yet
+        return; // Stop here (don't clear cart yet)
       }
 
-      // --- EXISTING CASH SUCCESS LOGIC ---
+      // === IF CASH ORDER ===
       if (window.Telegram.WebApp) {
         window.Telegram.WebApp.showAlert(`✅ Order Placed!`);
         setTimeout(() => window.Telegram.WebApp.close(), 1000);
