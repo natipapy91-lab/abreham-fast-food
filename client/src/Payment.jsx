@@ -50,8 +50,10 @@ const handleOrder = async () => {
       setCart([]);
       
     } catch (error) {
-      alert("Error processing order.");
+      // --- SHOW REAL SERVER ERROR ---
       console.error(error);
+      const serverMsg = error.response?.data?.error || error.message;
+      alert(`Payment Error: ${serverMsg}`);
     } finally {
       setIsLoading(false);
     }

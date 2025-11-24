@@ -32,25 +32,32 @@ app.post('/api/order', async (req, res) => {
 
   console.log("Processing Order:", paymentMethod); // Debug Log
 
-  // 1. CHAPA ONLINE PAYMENT
+  // === 1. HANDLE CHAPA ONLINE PAYMENT ===
   if (paymentMethod === 'Online Payment') {
     try {
       if (!process.env.CHAPA_SECRET_KEY) {
         throw new Error("CHAPA_SECRET_KEY is missing in Render Environment");
       }
 
-      // CHANGE THIS TO YOUR VERCEL URL
-      // Example: const returnUrl = 'https://abreham-fast-food.vercel.app/';
       const returnUrl = 'https://abreham-fast-food.vercel.app/'; 
+
+      // --- FIX: Ensure data is never empty ---
+      const safeUser = user || {};
+      const firstName = safeUser.name && safeUser.name.length > 0 ? safeUser.name : 'Valued Customer';
+      const phoneNumber = safeUser.phone && safeUser.phone.length > 0 ? safeUser.phone : '0900000000';
+      const email = 'customer@abrehamfastfood.com'; // Chapa requires email, can be placeholder
+      
+      console.log("Initializing Chapa for:", firstName, phoneNumber, total);
 
       const chapaResponse = await axios.post(
         'https://api.chapa.co/v1/transaction/initialize',
         {
           amount: total.toString(),
           currency: 'ETB',
-          email: 'customer@abreham.com',
-          first_name: user.name || 'Customer',
-          phone_number: user.phone || '0000000000',
+          email: email,
+          first_name: firstName,
+          last_name: 'User',
+          phone_number: phoneNumber,
           tx_ref: tx_ref,
           return_url: returnUrl,
           customization: { title: 'Abreham Food', description: 'Order Payment' }
@@ -60,8 +67,12 @@ app.post('/api/order', async (req, res) => {
 
       return res.json({ success: true, paymentUrl: chapaResponse.data.data.checkout_url });
     } catch (error) {
-      console.error("Chapa Error:", error.response?.data || error.message);
-      return res.status(500).json({ success: false, error: "Payment failed" });
+      // LOG THE REAL CHAPA ERROR TO RENDER CONSOLE
+      console.error("Chapa Error Details:", error.response?.data || error.message);
+      
+      // Send the specific error to the phone
+      const errorMessage = error.response?.data?.message || "Payment initiation failed";
+      return res.status(500).json({ success: false, error: errorMessage });
     }
   }
 
