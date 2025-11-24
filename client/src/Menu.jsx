@@ -10,26 +10,35 @@ function Menu({ cart, setCart }) {
     // 1. Fetch Menu
     axios.get('/api/menu')
       .then(res => setItems(res.data))
-      .catch(err => console.error("API Error:", err));
+      .catch(err => console.error(err));
 
-    // 2. TELEGRAM SETUP & SAVE ID
-    if (window.Telegram.WebApp) {
+    // 2. AGGRESSIVE ID FINDER
+    // Check every 500ms until we find the user ID
+    const intervalId = setInterval(() => {
+      if (window.Telegram && window.Telegram.WebApp) {
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
         
-        // --- SAVE THE ID IMMEDIATELY ---
         const user = window.Telegram.WebApp.initDataUnsafe?.user;
+        
         if (user && user.id) {
-            console.log("Saving ID:", user.id);
-            localStorage.setItem('telegram_user_id', user.id);
+          console.log("✅ FOUND ID:", user.id);
+          // Save to storage so Payment page can read it
+          localStorage.setItem('telegram_user_id', user.id);
+          
+          // Stop checking
+          clearInterval(intervalId);
         }
-    }
+      }
+    }, 500);
+
+    // Stop checking after 10 seconds (to save battery)
+    setTimeout(() => clearInterval(intervalId), 10000);
+
   }, []);
 
-  // Helper: Get quantity
-  const getQuantity = (itemId) => {
-    return cart.filter(item => item.id === itemId).length;
-  };
+  // --- STANDARD CART LOGIC BELOW ---
+  const getQuantity = (itemId) => cart.filter(item => item.id === itemId).length;
 
   const addToCart = (item) => {
     setCart([...cart, item]);
@@ -59,39 +68,3 @@ function Menu({ cart, setCart }) {
         return (
           <div key={item.id} className="item">
             <div className="item-info">
-              <span className="item-icon">{item.image}</span>
-              <div className="item-details">
-                <b>{item.name}</b>
-                <div>${item.price.toFixed(2)}</div>
-              </div>
-            </div>
-            
-            {qty === 0 ? (
-              <button onClick={() => addToCart(item)}>ADD</button>
-            ) : (
-              <div className="quantity-controls">
-                <button onClick={() => removeFromCart(item)}>-</button>
-                <span>{qty}</span>
-                <button onClick={() => addToCart(item)}>+</button>
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {/* Bottom Cart Bar */}
-      {cart.length > 0 && (
-        <div className="cart-bar">
-          <div className="total-price">
-            Total: ${totalPrice.toFixed(2)}
-          </div>
-          <button className="btn-next" onClick={() => navigate('/delivery')}>
-            ORDER ({cart.length})
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default Menu;
