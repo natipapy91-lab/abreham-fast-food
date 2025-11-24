@@ -8,7 +8,7 @@ function Menu({ cart, setCart }) {
 
   useEffect(() => {
     // 1. Fetch Menu
-    axios.get('/api/menu')
+    axios.get('https://abreham-fast-food.onrender.com/api/menu')
       .then(res => setItems(res.data))
       .catch(err => console.error(err));
 

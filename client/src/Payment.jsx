@@ -25,7 +25,7 @@ const handleOrder = async () => {
     };
 
     try {
-      const response = await axios.post('/api/order', orderData);
+      const response = await axios.post('https://abreham-fast-food.onrender.com/api/order', orderData);
       
       // --- NEW: CHECK FOR PAYMENT LINK ---
       if (response.data.paymentUrl) {
