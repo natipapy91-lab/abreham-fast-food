@@ -9,46 +9,37 @@ function Payment({ cart, setCart }) {
   
   const [paymentMethod, setPaymentMethod] = useState('Cash On Delivery');
   const [isLoading, setIsLoading] = useState(false);
-  // Debug state to see if ID is detected
-  const [debugId, setDebugId] = useState('Not Detected');
-
+  
   const total = cart.reduce((sum, item) => sum + item.price, 0);
 
-  useEffect(() => {
-    // Check if Telegram ID is visible immediately when page loads
-    const telegramId = window.Telegram.WebApp?.initDataUnsafe?.user?.id;
-    if (telegramId) setDebugId(telegramId);
-  }, []);
-
-  // --- THE FIX: 'async' KEYWORD ---
   const handleOrder = async () => {
     setIsLoading(true);
     
-    // Get the ID again right before sending
-    const telegramUserId = window.Telegram.WebApp?.initDataUnsafe?.user?.id;
+    // --- READ ID FROM STORAGE ---
+    const savedId = localStorage.getItem('telegram_user_id');
 
     const orderData = {
       user: userDetails,
       cart: cart,
       paymentMethod: paymentMethod,
       total: total,
-      chatId: telegramUserId 
+      chatId: savedId // Send the saved ID
     };
 
     try {
       await axios.post('/api/order', orderData);
       
       if (window.Telegram.WebApp) {
-        window.Telegram.WebApp.showAlert(`✅ Success! Notification sent.`);
+        window.Telegram.WebApp.showAlert(`✅ Order Placed! You will receive a message shortly.`);
         setTimeout(() => window.Telegram.WebApp.close(), 1000);
       } else {
-        alert("Order Placed!");
+        alert("Order Placed Successfully!");
         navigate('/');
       }
       setCart([]);
       
     } catch (error) {
-      alert("Error placing order.");
+      alert("Error placing order. Please try again.");
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -59,11 +50,6 @@ function Payment({ cart, setCart }) {
     <div className="container" style={{ paddingBottom: '100px' }}>
       <div className="header-title">
         <h3>💰 Payment & Confirm</h3>
-      </div>
-
-      {/* Debug Info: Show User ID on screen */}
-      <div style={{fontSize: '10px', color: '#555', textAlign: 'center', marginBottom: '10px'}}>
-        Telegram ID: {debugId}
       </div>
 
       <div className="input-card" style={{ color: '#fff' }}>
@@ -78,11 +64,16 @@ function Payment({ cart, setCart }) {
         <select 
           value={paymentMethod} 
           onChange={(e) => setPaymentMethod(e.target.value)}
-          style={{ width: '100%', background: 'transparent', color: 'white', border: 'none' }}
+          style={{ width: '100%', background: 'transparent', color: 'white', border: 'none', fontSize: '16px' }}
         >
           <option value="Cash On Delivery">💵 Cash On Delivery</option>
           <option value="Online Payment">💳 Online (Bank/Transfer)</option>
         </select>
+      </div>
+
+      <div style={{ padding: '0 10px', color: '#888', fontSize: '14px' }}>
+        <p>Delivering to: {userDetails.name}</p>
+        <p>Phone: {userDetails.phone}</p>
       </div>
 
       <div className="bottom-action-bar">

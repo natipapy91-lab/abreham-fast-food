@@ -6,31 +6,36 @@ function Menu({ cart, setCart }) {
   const [items, setItems] = useState([]);
   const navigate = useNavigate();
 
-  // Fetch Menu
   useEffect(() => {
-    // Using 127.0.0.1 based on previous fix
+    // 1. Fetch Menu
     axios.get('/api/menu')
       .then(res => setItems(res.data))
       .catch(err => console.error("API Error:", err));
 
+    // 2. TELEGRAM SETUP & SAVE ID
     if (window.Telegram.WebApp) {
         window.Telegram.WebApp.ready();
-        window.Telegram.WebApp.expand(); // Open full height
+        window.Telegram.WebApp.expand();
+        
+        // --- SAVE THE ID IMMEDIATELY ---
+        const user = window.Telegram.WebApp.initDataUnsafe?.user;
+        if (user && user.id) {
+            console.log("Saving ID:", user.id);
+            localStorage.setItem('telegram_user_id', user.id);
+        }
     }
   }, []);
 
-  // Helper: Get quantity of specific item in cart
+  // Helper: Get quantity
   const getQuantity = (itemId) => {
     return cart.filter(item => item.id === itemId).length;
   };
 
-  // Add Item
   const addToCart = (item) => {
     setCart([...cart, item]);
     if (window.Telegram.WebApp) window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
   };
 
-  // Remove Item (one at a time)
   const removeFromCart = (item) => {
     const index = cart.findIndex(c => c.id === item.id);
     if (index > -1) {
@@ -45,7 +50,9 @@ function Menu({ cart, setCart }) {
 
   return (
     <div className="container">
-      <h2>🍔 Abreham Menu</h2>
+      <div className="header-title">
+        <h3>🍔 Abreham Menu</h3>
+      </div>
       
       {items.map(item => {
         const qty = getQuantity(item.id);
@@ -59,7 +66,6 @@ function Menu({ cart, setCart }) {
               </div>
             </div>
             
-            {/* Quantity Controls */}
             {qty === 0 ? (
               <button onClick={() => addToCart(item)}>ADD</button>
             ) : (
@@ -72,10 +78,6 @@ function Menu({ cart, setCart }) {
           </div>
         );
       })}
-
-      <button className="btn-back" onClick={() => window.Telegram.WebApp.close()}>
-        Close App
-      </button>
 
       {/* Bottom Cart Bar */}
       {cart.length > 0 && (
