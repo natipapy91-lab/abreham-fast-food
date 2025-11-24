@@ -12,10 +12,8 @@ function Payment({ cart, setCart }) {
   
   const total = cart.reduce((sum, item) => sum + item.price, 0);
 
-  const handleOrder = async () => {
+const handleOrder = async () => {
     setIsLoading(true);
-    
-    // --- READ ID FROM STORAGE ---
     const savedId = localStorage.getItem('telegram_user_id');
 
     const orderData = {
@@ -23,14 +21,27 @@ function Payment({ cart, setCart }) {
       cart: cart,
       paymentMethod: paymentMethod,
       total: total,
-      chatId: savedId // Send the saved ID
+      chatId: savedId
     };
 
     try {
-      await axios.post('/api/order', orderData);
+      const response = await axios.post('/api/order', orderData);
       
+      // --- NEW: CHECK FOR PAYMENT LINK ---
+      if (response.data.paymentUrl) {
+        // Open Chapa in Telegram's external browser
+        if (window.Telegram.WebApp) {
+            window.Telegram.WebApp.openLink(response.data.paymentUrl);
+        } else {
+            // For testing on computer
+            window.location.href = response.data.paymentUrl;
+        }
+        return; // Stop here, don't clear cart yet
+      }
+
+      // --- EXISTING CASH SUCCESS LOGIC ---
       if (window.Telegram.WebApp) {
-        window.Telegram.WebApp.showAlert(`✅ Order Placed! You will receive a message shortly.`);
+        window.Telegram.WebApp.showAlert(`✅ Order Placed!`);
         setTimeout(() => window.Telegram.WebApp.close(), 1000);
       } else {
         alert("Order Placed Successfully!");
@@ -39,7 +50,7 @@ function Payment({ cart, setCart }) {
       setCart([]);
       
     } catch (error) {
-      alert("Error placing order. Please try again.");
+      alert("Error processing order.");
       console.error(error);
     } finally {
       setIsLoading(false);

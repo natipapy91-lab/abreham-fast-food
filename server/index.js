@@ -1,3 +1,4 @@
+const axios = require('axios');
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -36,36 +37,82 @@ app.get('/api/menu', (req, res) => {
 // REPLACE THE app.post('/api/order') SECTION WITH THIS:
 
 app.post('/api/order', async (req, res) => {
-  console.log("📥 RECEIVED ORDER DATA:", req.body); // <--- Log what came in
-
   const { user, cart, paymentMethod, total, chatId } = req.body;
   
-  // Basic validation
-  if (!user || !cart) {
-      console.log("❌ Missing user or cart data");
-      return res.status(400).json({ error: "Missing data" });
-  }
+  // Create a unique Reference Number (e.g., TX-17562...)
+  const tx_ref = "TX-" + Date.now();
 
   const itemsList = cart.map(i => `- ${i.name} ($${i.price})`).join('\n');
+
+  // --- LOGIC 1: IF ONLINE PAYMENT (CHAPA) ---
+  if (paymentMethod === 'Online Payment') {
+    try {
+      const chapaResponse = await axios.post(
+        'https://api.chapa.co/v1/transaction/initialize',
+        {
+          amount: total.toString(),
+          currency: 'ETB',
+          email: 'customer@abrehamfood.com', // Placeholder email
+          first_name: user.name,
+          phone_number: user.phone,
+          tx_ref: tx_ref,
+          // Where to go after payment (Your Render URL)
+          return_url: 'https://abreham-fast-food.onrender.com/', 
+          customization: {
+            title: 'Abreham Fast Food',
+            description: 'Payment for food order'
+          }
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`
+          }
+        }
+      );
+
+      // Send the Chapa Link back to the frontend
+      return res.json({ 
+        success: true, 
+        paymentUrl: chapaResponse.data.data.checkout_url 
+      });
+
+    } catch (error) {
+      console.error("Chapa Error:", error.response?.data || error.message);
+      return res.status(500).json({ success: false, error: "Payment initiation failed" });
+    }
+  }
+
+  // --- LOGIC 2: IF CASH ON DELIVERY (OLD LOGIC) ---
   
   const ownerMessage = `
-🔔 *NEW ORDER!*
+🔔 *NEW CASH ORDER!*
 👤 ${user.name} (${user.phone})
+📍 ${user.location}
 💰 ${paymentMethod}
-💵 Total: $${total}
+🍔 Order:
+${itemsList}
+💵 Total: ${total} ETB
   `;
 
-  const customerMessage = `✅ Order Received! Total: $${total}`;
+  const customerMessage = `
+✅ *Order Confirmed!*
+We will call you at ${user.phone} when arriving.
+💰 Please have ${total} ETB ready.
+  `;
 
   try {
-    // 1. Send to Owner
     if (process.env.OWNER_CHAT_ID) {
-      console.log(`📤 Sending to Owner (${process.env.OWNER_CHAT_ID})...`);
       await bot.telegram.sendMessage(process.env.OWNER_CHAT_ID, ownerMessage);
-      console.log("✅ Sent to Owner");
-    } else {
-      console.log("⚠️ OWNER_CHAT_ID is missing in .env file");
     }
+    if (chatId) {
+      await bot.telegram.sendMessage(chatId, customerMessage);
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Telegram Error:", error);
+    res.json({ success: true }); // Still say success to app so it closes
+  }
+});
 
     // 2. Send to Customer
     if (chatId) {
