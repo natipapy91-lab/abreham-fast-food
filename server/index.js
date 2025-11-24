@@ -142,7 +142,7 @@ bot.start((ctx) => {
   ctx.reply("Welcome to Abreham Fast Food! 🍔🍟", 
     Markup.keyboard([
       // We will replace this URL in the final step with Ngrok
-      Markup.button.webApp("Order Food Now", "https://abreham-fast-food.onrender.com") 
+      Markup.button.webApp("Order Food Now", "https://abreham-fast-food.vercel.app/") 
     ]).resize()
   );
 });
