@@ -37,7 +37,7 @@ function Menu({ cart, setCart }) {
 
   }, []);
 
-  // --- STANDARD CART LOGIC BELOW ---
+  // --- STANDARD CART LOGIC ---
   const getQuantity = (itemId) => cart.filter(item => item.id === itemId).length;
 
   const addToCart = (item) => {
@@ -68,3 +68,35 @@ function Menu({ cart, setCart }) {
         return (
           <div key={item.id} className="item">
             <div className="item-info">
+              <span className="item-icon">{item.image}</span>
+              <div className="item-details">
+                <b>{item.name}</b>
+                <div>${item.price.toFixed(2)}</div>
+              </div>
+            </div>
+            {qty === 0 ? (
+              <button onClick={() => addToCart(item)}>ADD</button>
+            ) : (
+              <div className="quantity-controls">
+                <button onClick={() => removeFromCart(item)}>-</button>
+                <span>{qty}</span>
+                <button onClick={() => addToCart(item)}>+</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {cart.length > 0 && (
+        <div className="cart-bar">
+          <div className="total-price">Total: ${totalPrice.toFixed(2)}</div>
+          <button className="btn-next" onClick={() => navigate('/delivery')}>
+            ORDER ({cart.length})
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Menu;

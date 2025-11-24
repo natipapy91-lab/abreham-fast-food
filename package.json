@@ -2,10 +2,11 @@
   "name": "abreham-fast-food",
   "version": "1.0.0",
   "scripts": {
-    "build": "cd client && npm install && npm run build && cd ../server && npm install",
-    "start": "node server/index.js"
-  },
+  "dev": "vite",
+  "build": "vite build",   <-- OR "tsc && vite build"
+  "lint": "eslint ...."
+},
   "engines": {
-    "node": "18.x"
-  }
+  "node": "22.x"
+}
 }
