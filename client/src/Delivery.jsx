@@ -15,36 +15,42 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// --- 1. NEW COMPONENT: THE "FIND ME" BUTTON ---
+// --- 1. NEW COMPONENT: THE "FIND ME" BUTTON (FIXED) ---
 function LocateControl() {
   const map = useMap();
 
   const handleLocate = (e) => {
-    e.stopPropagation(); // Prevent map click
-    map.locate(); // Trigger GPS find
+    // Stop the map from reacting to this click
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Trigger GPS find
+    map.locate();
   };
 
   return (
     <div 
       onClick={handleLocate}
+      // Vital for mobile phones:
+      onTouchEnd={handleLocate}
       style={{
         position: 'absolute', 
-        top: '10px', 
-        right: '10px', 
-        zIndex: 1000, // Above map tiles
+        top: '15px', 
+        right: '15px', 
+        zIndex: 9999, /* Force it to top */
         backgroundColor: 'white',
-        width: '40px',
-        height: '40px',
-        borderRadius: '50%', // Circle shape
+        width: '44px',
+        height: '44px',
+        borderRadius: '8px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
         cursor: 'pointer',
-        border: '2px solid #ccc'
+        border: '2px solid rgba(0,0,0,0.2)'
       }}
     >
-      {/* Simple Target Icon (SVG) */}
+      {/* Target Icon */}
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3390ec" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="8" x2="12" y2="16"></line>
@@ -82,7 +88,7 @@ function LocationMarker({ setLocationName }) {
   };
 
   useEffect(() => {
-    map.locate(); // Auto-locate on load
+    map.locate(); 
   }, [map]);
 
   return position === null ? null : (
@@ -130,7 +136,7 @@ function Delivery() {
 
       <div className="input-card">
         <label>Location</label>
-        <input type="text" name="location" placeholder="Tap map or use target button..." value={formData.location} onChange={handleChange} />
+        <input type="text" name="location" placeholder="Tap map..." value={formData.location} onChange={handleChange} />
       </div>
 
       {/* MAP CONTAINER */}
@@ -138,7 +144,7 @@ function Delivery() {
         <MapContainer center={[9.002, 38.752]} zoom={13} style={{ height: '100%', width: '100%' }}>
           <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           
-          {/* Add the Find Me Button here */}
+          {/* Find Me Button */}
           <LocateControl />
           
           <LocationMarker setLocationName={updateLocationFromMap} />
