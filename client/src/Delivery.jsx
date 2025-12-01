@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
-// Fix for default marker icon
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
@@ -15,42 +14,28 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// --- 1. NEW COMPONENT: THE "FIND ME" BUTTON (FIXED) ---
+// --- 1. "FIND ME" BUTTON ---
 function LocateControl() {
   const map = useMap();
 
   const handleLocate = (e) => {
-    // Stop the map from reacting to this click
     e.preventDefault();
     e.stopPropagation();
-    
-    // Trigger GPS find
-    map.locate();
+    // Try to find location with high accuracy
+    map.locate({ enableHighAccuracy: true });
   };
 
   return (
     <div 
       onClick={handleLocate}
-      // Vital for mobile phones:
       onTouchEnd={handleLocate}
       style={{
-        position: 'absolute', 
-        top: '15px', 
-        right: '15px', 
-        zIndex: 9999, /* Force it to top */
-        backgroundColor: 'white',
-        width: '44px',
-        height: '44px',
-        borderRadius: '8px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
-        cursor: 'pointer',
-        border: '2px solid rgba(0,0,0,0.2)'
+        position: 'absolute', top: '15px', right: '15px', zIndex: 9999,
+        backgroundColor: 'white', width: '44px', height: '44px', borderRadius: '8px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.4)', cursor: 'pointer', border: '2px solid rgba(0,0,0,0.2)'
       }}
     >
-      {/* Target Icon */}
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3390ec" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="8" x2="12" y2="16"></line>
@@ -60,7 +45,7 @@ function LocateControl() {
   );
 }
 
-// --- 2. LOGIC TO HANDLE GPS FOUND ---
+// --- 2. MAP LOGIC & ERROR HANDLING ---
 function LocationMarker({ setLocationName }) {
   const [position, setPosition] = useState(null);
   
@@ -69,11 +54,26 @@ function LocationMarker({ setLocationName }) {
       setPosition(e.latlng);
       fetchAddress(e.latlng.lat, e.latlng.lng);
     },
+    
+    // ✅ SUCCESS: GPS Found
     locationfound(e) {
       setPosition(e.latlng);
-      map.flyTo(e.latlng, map.getZoom());
+      map.flyTo(e.latlng, 16); // Zoom in close
       fetchAddress(e.latlng.lat, e.latlng.lng);
     },
+
+    // ❌ ERROR: GPS Off or Denied
+    locationerror(e) {
+      console.error("GPS Error:", e.message);
+      
+      const msg = "⚠️ Could not find you.\n\n1. Please turn ON your Phone Location/GPS.\n2. Allow Telegram to access Location.\n3. Tap the target button again.";
+
+      if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.showAlert(msg);
+      } else {
+        alert(msg);
+      }
+    }
   });
 
   const fetchAddress = async (lat, lng) => {
@@ -88,7 +88,8 @@ function LocationMarker({ setLocationName }) {
   };
 
   useEffect(() => {
-    map.locate(); 
+    // Attempt to locate immediately on load
+    map.locate({ enableHighAccuracy: true }); 
   }, [map]);
 
   return position === null ? null : (
@@ -114,7 +115,8 @@ function Delivery() {
 
   const handleNext = () => {
     if (!formData.name || !formData.phone || !formData.location) {
-        alert("Please fill in all fields!");
+        if(window.Telegram?.WebApp) window.Telegram.WebApp.showAlert("Please fill in all fields (Name, Phone, Location).");
+        else alert("Please fill in all fields!");
         return;
     }
     navigate('/payment', { state: { userDetails: formData } });
@@ -136,7 +138,7 @@ function Delivery() {
 
       <div className="input-card">
         <label>Location</label>
-        <input type="text" name="location" placeholder="Tap map..." value={formData.location} onChange={handleChange} />
+        <input type="text" name="location" placeholder="Tap map or use button..." value={formData.location} onChange={handleChange} />
       </div>
 
       {/* MAP CONTAINER */}
@@ -144,9 +146,7 @@ function Delivery() {
         <MapContainer center={[9.002, 38.752]} zoom={13} style={{ height: '100%', width: '100%' }}>
           <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           
-          {/* Find Me Button */}
           <LocateControl />
-          
           <LocationMarker setLocationName={updateLocationFromMap} />
         </MapContainer>
       </div>
