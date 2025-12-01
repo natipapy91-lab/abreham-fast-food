@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
-// Fix for default marker icon missing in React-Leaflet
+// Fix for default marker icon
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
@@ -15,7 +15,46 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Component to handle clicks and GPS
+// --- 1. NEW COMPONENT: THE "FIND ME" BUTTON ---
+function LocateControl() {
+  const map = useMap();
+
+  const handleLocate = (e) => {
+    e.stopPropagation(); // Prevent map click
+    map.locate(); // Trigger GPS find
+  };
+
+  return (
+    <div 
+      onClick={handleLocate}
+      style={{
+        position: 'absolute', 
+        top: '10px', 
+        right: '10px', 
+        zIndex: 1000, // Above map tiles
+        backgroundColor: 'white',
+        width: '40px',
+        height: '40px',
+        borderRadius: '50%', // Circle shape
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+        cursor: 'pointer',
+        border: '2px solid #ccc'
+      }}
+    >
+      {/* Simple Target Icon (SVG) */}
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3390ec" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="16"></line>
+        <line x1="8" y1="12" x2="16" y2="12"></line>
+      </svg>
+    </div>
+  );
+}
+
+// --- 2. LOGIC TO HANDLE GPS FOUND ---
 function LocationMarker({ setLocationName }) {
   const [position, setPosition] = useState(null);
   
@@ -33,10 +72,8 @@ function LocationMarker({ setLocationName }) {
 
   const fetchAddress = async (lat, lng) => {
     try {
-      // Free OpenStreetMap Geocoding
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
       const data = await response.json();
-      // Get a short address
       const simpleAddress = data.display_name.split(',').slice(0, 3).join(',');
       setLocationName(simpleAddress);
     } catch (error) {
@@ -45,7 +82,7 @@ function LocationMarker({ setLocationName }) {
   };
 
   useEffect(() => {
-    map.locate(); // Ask for GPS permission on load
+    map.locate(); // Auto-locate on load
   }, [map]);
 
   return position === null ? null : (
@@ -92,14 +129,18 @@ function Delivery() {
       </div>
 
       <div className="input-card">
-        <label>Location (Tap map below)</label>
-        <input type="text" name="location" placeholder="Address..." value={formData.location} onChange={handleChange} />
+        <label>Location</label>
+        <input type="text" name="location" placeholder="Tap map or use target button..." value={formData.location} onChange={handleChange} />
       </div>
 
       {/* MAP CONTAINER */}
-      <div style={{ height: '250px', borderRadius: '15px', overflow: 'hidden', marginBottom: '20px', border: '2px solid #444' }}>
+      <div style={{ height: '300px', borderRadius: '15px', overflow: 'hidden', marginBottom: '20px', border: '2px solid #444', position: 'relative' }}>
         <MapContainer center={[9.002, 38.752]} zoom={13} style={{ height: '100%', width: '100%' }}>
           <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          
+          {/* Add the Find Me Button here */}
+          <LocateControl />
+          
           <LocationMarker setLocationName={updateLocationFromMap} />
         </MapContainer>
       </div>
