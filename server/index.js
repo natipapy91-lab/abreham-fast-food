@@ -81,16 +81,19 @@ app.post('/api/order', async (req, res) => {
 
   // === 2. HANDLE CASH ORDERS ===
   try {
-    // Check if we have GPS coordinates
     let locationString = user.location;
+    let hasGPS = false;
+
+    // Check if valid coordinates exist
     if (user.latitude && user.longitude) {
-        // Create a clickable Google Maps link
+        hasGPS = true;
+        // Create a Google Maps Link
         const mapLink = `https://www.google.com/maps/search/?api=1&query=${user.latitude},${user.longitude}`;
-        locationString += `\n\n🗺 [Click to Open Map](${mapLink})`;
+        locationString += `\n\n🗺 [Open in Google Maps](${mapLink})`;
     }
 
     const ownerMessage = `
-🔔 *NEW ORDER (CASH)*
+🔔 *NEW ORDER*
 👤 ${user.name}
 📞 ${user.phone}
 💰 ${total} ETB
@@ -102,24 +105,24 @@ ${locationString}
 ${itemsList}
 `;
 
-    // Send to Owner
+    // 1. Send Text Message
     if (process.env.OWNER_CHAT_ID) {
         await bot.telegram.sendMessage(process.env.OWNER_CHAT_ID, ownerMessage, { 
             parse_mode: 'Markdown',
             disable_web_page_preview: true 
         });
-        
-        // OPTIONAL: Send exact location point as a separate message for easier navigation
-        if (user.latitude && user.longitude) {
-             await bot.telegram.sendLocation(process.env.OWNER_CHAT_ID, user.latitude, user.longitude);
+
+        // 2. Send The Bubble (Location Point)
+        if (hasGPS) {
+            console.log("Sending GPS Bubble:", user.latitude, user.longitude);
+            await bot.telegram.sendLocation(process.env.OWNER_CHAT_ID, parseFloat(user.latitude), parseFloat(user.longitude));
+        } else {
+            console.log("No GPS coordinates provided in order.");
         }
     }
 
-    // Send to Customer
-    if (chatId) await bot.telegram.sendMessage(chatId, "✅ Order Confirmed! We are coming.");
-    
+    if (chatId) await bot.telegram.sendMessage(chatId, "✅ Order Confirmed!");
     res.json({ success: true });
-
   } catch (error) {
     console.error("Telegram Error:", error);
     res.json({ success: true });

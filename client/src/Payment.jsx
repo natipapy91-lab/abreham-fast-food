@@ -5,19 +5,22 @@ import axios from 'axios';
 function Payment({ cart, setCart }) {
   const navigate = useNavigate();
   const { state } = useLocation(); 
-  const userDetails = state?.userDetails || {};
+  const userDetails = state?.userDetails || {}; // This contains name, phone, location, latitude, longitude
   
   const [paymentMethod, setPaymentMethod] = useState('Cash On Delivery');
   const [isLoading, setIsLoading] = useState(false);
   
   const total = cart.reduce((sum, item) => sum + item.price, 0);
 
-const handleOrder = async () => {
+  const handleOrder = async () => {
     setIsLoading(true);
     const savedId = localStorage.getItem('telegram_user_id');
 
+    // DEBUG: Check if we have coordinates
+    console.log("Sending Order with User Data:", userDetails);
+
     const orderData = {
-      user: userDetails,
+      user: userDetails, // Passing the whole object (including lat/lng)
       cart: cart,
       paymentMethod: paymentMethod,
       total: total,
@@ -25,21 +28,20 @@ const handleOrder = async () => {
     };
 
     try {
-      // Use your RENDER URL here
+      // Use your RENDER URL
       const response = await axios.post('https://abreham-fast-food.onrender.com/api/order', orderData);
       
-      // === IF SERVER SENDS A PAYMENT LINK ===
+      // 1. ONLINE PAYMENT
       if (response.data.paymentUrl) {
-        // Open Chapa Page
         if (window.Telegram.WebApp) {
             window.Telegram.WebApp.openLink(response.data.paymentUrl);
         } else {
             window.location.href = response.data.paymentUrl;
         }
-        return; // Stop here (don't clear cart yet)
+        return; 
       }
 
-      // === IF CASH ORDER ===
+      // 2. CASH PAYMENT SUCCESS
       if (window.Telegram.WebApp) {
         window.Telegram.WebApp.showAlert(`✅ Order Placed!`);
         setTimeout(() => window.Telegram.WebApp.close(), 1000);
@@ -50,10 +52,8 @@ const handleOrder = async () => {
       setCart([]);
       
     } catch (error) {
-      // --- SHOW REAL SERVER ERROR ---
+      alert("Error processing order.");
       console.error(error);
-      const serverMsg = error.response?.data?.error || error.message;
-      alert(`Payment Error: ${serverMsg}`);
     } finally {
       setIsLoading(false);
     }
@@ -86,7 +86,11 @@ const handleOrder = async () => {
 
       <div style={{ padding: '0 10px', color: '#888', fontSize: '14px' }}>
         <p>Delivering to: {userDetails.name}</p>
-        <p>Phone: {userDetails.phone}</p>
+        <p>Location: {userDetails.location}</p>
+        {/* Debug Text to see if GPS is there */}
+        <p style={{fontSize: '10px', color: userDetails.latitude ? 'green' : 'red'}}>
+           GPS: {userDetails.latitude ? '✅ Attached' : '❌ Missing (Tap Map!)'}
+        </p>
       </div>
 
       <div className="bottom-action-bar">
