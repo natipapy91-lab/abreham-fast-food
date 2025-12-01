@@ -77,26 +77,50 @@ app.post('/api/order', async (req, res) => {
     }
   }
 
+// ... (inside app.post /api/order) ...
+
   // === 2. HANDLE CASH ORDERS ===
   try {
-    const msg = `🔔 *NEW ORDER* \n👤 ${user.name}\n💰 ${total} ETB\n🍔 ${itemsList}`;
-    if (process.env.OWNER_CHAT_ID) await bot.telegram.sendMessage(process.env.OWNER_CHAT_ID, msg);
-    if (chatId) await bot.telegram.sendMessage(chatId, "✅ Order Confirmed!");
+    // Check if we have GPS coordinates
+    let locationString = user.location;
+    if (user.latitude && user.longitude) {
+        // Create a clickable Google Maps link
+        const mapLink = `https://www.google.com/maps/search/?api=1&query=${user.latitude},${user.longitude}`;
+        locationString += `\n\n🗺 [Click to Open Map](${mapLink})`;
+    }
+
+    const ownerMessage = `
+🔔 *NEW ORDER (CASH)*
+👤 ${user.name}
+📞 ${user.phone}
+💰 ${total} ETB
+
+📍 *Location:*
+${locationString}
+
+🍔 *Order:*
+${itemsList}
+`;
+
+    // Send to Owner
+    if (process.env.OWNER_CHAT_ID) {
+        await bot.telegram.sendMessage(process.env.OWNER_CHAT_ID, ownerMessage, { 
+            parse_mode: 'Markdown',
+            disable_web_page_preview: true 
+        });
+        
+        // OPTIONAL: Send exact location point as a separate message for easier navigation
+        if (user.latitude && user.longitude) {
+             await bot.telegram.sendLocation(process.env.OWNER_CHAT_ID, user.latitude, user.longitude);
+        }
+    }
+
+    // Send to Customer
+    if (chatId) await bot.telegram.sendMessage(chatId, "✅ Order Confirmed! We are coming.");
+    
     res.json({ success: true });
+
   } catch (error) {
     console.error("Telegram Error:", error);
     res.json({ success: true });
   }
-});
-
-// --- BOT START ---
-bot.start((ctx) => {
-  ctx.reply("Welcome! Click below to order:", 
-    Markup.keyboard([
-      Markup.button.webApp("Order Food Now", "https://abreham-fast-food.vercel.app") 
-    ]).resize()
-  );
-});
-
-bot.launch();
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
